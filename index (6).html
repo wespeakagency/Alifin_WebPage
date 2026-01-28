@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alifin.Tech | Arquitectura Financiera</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Babel for JSX transformation in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind Config -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                dark: '#0B0F19',       /* Fondo Principal: Casi negro */
+                navy: '#111827',       /* Fondo Secundario */
+                card: '#1F2937',       /* Tarjetas */
+                teal: '#2DD4BF',       /* Acento Principal */
+                tealDark: '#0D9488',   /* Acento Oscuro */
+                blue: '#3B82F6',       /* Acento Secundario */
+                gray: '#9CA3AF',       /* Texto secundario */
+                light: '#F3F4F6',      /* Texto principal */
+              }
+            },
+            fontFamily: {
+              sans: ['Montserrat', 'sans-serif'],
+              display: ['Montserrat', 'sans-serif'],
+            },
+            backgroundImage: {
+              'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+              'hero-glow': 'conic-gradient(from 90deg at 50% 50%, #00000000 50%, #111827 100%)',
+            },
+            animation: {
+              'float': 'float 6s ease-in-out infinite',
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'spin-slow': 'spin 12s linear infinite',
+            },
+            keyframes: {
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-20px)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- Custom Styles -->
+    <style>
+      /* Smooth scrolling & custom scrollbar */
+      body {
+        background-color: #0B0F19;
+        color: #F3F4F6;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0B0F19;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #1F2937;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #2DD4BF;
+      }
+      
+      .glass-panel {
+        background: rgba(31, 41, 55, 0.4);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      
+      .text-gradient {
+        background: linear-gradient(135deg, #2DD4BF 0%, #3B82F6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+    </style>
+
+    <!-- Import Map for React & Lucide -->
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.344.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+      import React, { useState, useEffect, useRef } from 'react';
+      import ReactDOM from 'react-dom/client';
+      import { 
+        ArrowRight, 
+        BarChart3, 
+        Shield, 
+        Zap, 
+        Layers, 
+        ChevronDown, 
+        Menu, 
+        X, 
+        Check, 
+        XCircle,
+        Target,
+        Globe,
+        TrendingUp,
+        Briefcase,
+        Clock,
+        PieChart,
+        FileSearch,
+        PenTool,
+        Building2,
+        Wallet
+      } from 'lucide-react';
+
+      // --- Utility Hooks & Components ---
+
+      const useOnScreen = (options) => {
+        const ref = useRef(null);
+        const [isVisible, setIsVisible] = useState(false);
+
+        useEffect(() => {
+          const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting) {
+              setIsVisible(true);
+              observer.disconnect(); 
+            }
+          }, options);
+          if (ref.current) observer.observe(ref.current);
+          return () => { if (ref.current) observer.unobserve(ref.current); };
+        }, [ref, options]);
+
+        return [ref, isVisible];
+      };
+
+      const FadeIn = ({ children, delay = 0, className = "", direction = 'up' }) => {
+        const [ref, isVisible] = useOnScreen({ threshold: 0.1 });
+        
+        const transforms = {
+          up: 'translate-y-10',
+          left: '-translate-x-10',
+          right: 'translate-x-10'
+        };
+
+        return (
+          <div 
+            ref={ref} 
+            className={`transition-all duration-1000 ease-out transform ${isVisible ? 'opacity-100 translate-y-0 translate-x-0' : `opacity-0 ${transforms[direction]}`} ${className}`}
+            style={{ transitionDelay: `${delay}ms` }}
+          >
+            {children}
+          </div>
+        );
+      };
+
+      // Animated Number Counter
+      const AnimatedNumber = ({ end, suffix = "" }) => {
+        const [count, setCount] = useState(0);
+        const [ref, isVisible] = useOnScreen({ threshold: 0.5 });
+
+        useEffect(() => {
+          if (isVisible) {
+            let start = 0;
+            const duration = 2000;
+            const increment = end / (duration / 16);
+            const timer = setInterval(() => {
+              start += increment;
+              if (start >= end) {
+                setCount(end);
+                clearInterval(timer);
+              } else {
+                setCount(Math.floor(start));
+              }
+            }, 16);
+            return () => clearInterval(timer);
+          }
+        }, [isVisible, end]);
+
+        return <span ref={ref} className="tabular-nums">{count}{suffix}</span>;
+      };
+
+      // --- Main Components ---
+
+      const Navbar = () => {
+        const [isScrolled, setIsScrolled] = useState(false);
+        const [isOpen, setIsOpen] = useState(false);
+
+        useEffect(() => {
+          const handleScroll = () => setIsScrolled(window.scrollY > 20);
+          window.addEventListener('scroll', handleScroll);
+          return () => window.removeEventListener('scroll', handleScroll);
+        }, []);
+
+        return (
+          <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'py-4' : 'py-6'}`}>
+            <div className={`mx-auto max-w-7xl px-6 transition-all duration-300 ${isScrolled ? 'bg-brand-dark/90 backdrop-blur-xl border border-white/5 rounded-full shadow-2xl mx-4 md:mx-auto' : ''}`}>
+              <div className="flex items-center justify-between">
+                <a href="#" className="flex items-center gap-2 group">
+                  <img 
+                    src="https://raw.githubusercontent.com/wespeakagency/Alifin_WebPage/main/alifintech.png" 
+                    alt="Alifin.Tech" 
+                    className="h-10 md:h-12 w-auto object-contain" 
+                  />
+                </a>
+
+                <div className="hidden md:flex items-center gap-8">
+                  {['Manifiesto', 'Soluciones', 'Proceso'].map((item) => (
+                    <a key={item} href={`#${item.toLowerCase()}`} className="text-sm font-medium text-gray-300 hover:text-white transition-colors">
+                      {item}
+                    </a>
+                  ))}
+                  <a href="#contacto" className="bg-white hover:bg-brand-teal hover:text-white text-brand-dark px-6 py-2 rounded-full font-bold text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_20px_rgba(45,212,191,0.4)]">
+                    Diagnóstico Gratis
+                  </a>
+                </div>
+
+                <button onClick={() => setIsOpen(!isOpen)} className="md:hidden text-white">
+                  {isOpen ? <X /> : <Menu />}
+                </button>
+              </div>
+            </div>
+            
+            {/* Mobile Menu Overlay */}
+            {isOpen && (
+              <div className="fixed inset-0 bg-brand-dark/95 backdrop-blur-xl z-40 flex flex-col items-center justify-center space-y-8 animate-in fade-in duration-200">
+                 {['Manifiesto', 'Soluciones', 'Proceso'].map((item) => (
+                    <a key={item} href={`#${item.toLowerCase()}`} onClick={() => setIsOpen(false)} className="text-2xl font-display font-bold text-white">
+                      {item}
+                    </a>
+                  ))}
+                  <a href="#contacto" onClick={() => setIsOpen(false)} className="bg-brand-teal text-white px-8 py-4 rounded-full font-bold text-xl">
+                    Solicitar Diagnóstico
+                  </a>
+                  <button onClick={() => setIsOpen(false)} className="absolute top-6 right-6 text-white p-2">
+                    <X className="w-8 h-8" />
+                  </button>
+              </div>
+            )}
+          </nav>
+        );
+      };
+
+      const Hero = () => {
+        const partners = [
+          { name: "Lendera", url: "https://raw.githubusercontent.com/wespeakagency/Alifin_WebPage/main/Logo%20Lendera%20Crowdlending%20Blanco%20v1_Mesa%20de%20trabajo%201.png" },
+          { name: "Pretmex", url: "https://raw.githubusercontent.com/wespeakagency/Alifin_WebPage/main/Logo_Pretmex_Blanco.png" },
+          { name: "Cualli", url: "https://raw.githubusercontent.com/wespeakagency/Alifin_WebPage/main/cualli-logo.png" },
+          { name: "Unifin", url: "https://raw.githubusercontent.com/wespeakagency/Alifin_WebPage/main/logo%20UNIFIN.png" },
+          { name: "Factor25", url: "https://raw.githubusercontent.com/wespeakagency/Alifin_WebPage/main/logo_factor25.png" },
+          { name: "Fondeadora", url: "https://raw.githubusercontent.com/wespeakagency/Alifin_WebPage/main/logo_fondeadora_white.png" }
+        ];
+
+        return (
+          <div className="relative min-h-screen flex flex-col justify-center pt-20 overflow-hidden bg-brand-dark">
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+            <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-brand-teal/10 rounded-full blur-[120px] animate-pulse-slow"></div>
+            
+            <div className="max-w-7xl mx-auto px-6 relative z-10 w-full flex-grow flex flex-col justify-center">
+              <div className="grid lg:grid-cols-2 gap-12 items-center">
+                <div className="text-left">
+                  <FadeIn delay={0}>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-teal/30 bg-brand-teal/10 mb-6">
+                      <span className="w-2 h-2 rounded-full bg-brand-teal animate-pulse"></span>
+                      <span className="text-brand-teal text-xs font-bold tracking-widest uppercase">Arquitectura Financiera</span>
+                    </div>
+                  </FadeIn>
+
+                  <FadeIn delay={100}>
+                    <h1 className="text-5xl md:text-7xl font-display font-bold text-white leading-tight mb-6">
+                      El dinero <br />
+                      más caro es <br />
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-teal to-brand-blue">
+                        el que no tienes.
+                      </span>
+                    </h1>
+                  </FadeIn>
+
+                  <FadeIn delay={200}>
+                    <p className="text-lg text-gray-400 max-w-lg mb-8 leading-relaxed">
+                      Diseñamos la estructura de capital perfecta para tu empresa.
+                      <br/>
+                      <span className="text-white font-medium">Sin bancos tradicionales. Sin letras chiquitas.</span>
+                    </p>
+                  </FadeIn>
+
+                  <FadeIn delay={300}>
+                    <div className="flex gap-4">
+                      <a href="#contacto" className="group bg-brand-teal hover:bg-brand-tealDark text-white px-8 py-4 rounded-full font-bold transition-all flex items-center gap-2 shadow-[0_0_30px_rgba(45,212,191,0.3)]">
+                        Construir Estrategia <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </a>
+                    </div>
+                  </FadeIn>
+                </div>
+
+                <div className="relative">
+                   <FadeIn delay={400} direction="right">
+                      <div className="relative z-10 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 transform rotate-2 hover:rotate-0 transition-transform duration-500 shadow-2xl">
+                         {/* Card Content - Abstract Dashboard */}
+                         <div className="flex justify-between items-center mb-8">
+                            <div>
+                              <p className="text-gray-400 text-xs uppercase tracking-wider">Tasa Promedio Optimizada</p>
+                              <p className="text-3xl font-display font-bold text-white">12.5% <span className="text-sm text-green-400 font-sans font-normal">-4.2% vs Mercado</span></p>
+                            </div>
+                            <div className="w-12 h-12 bg-brand-teal/20 rounded-full flex items-center justify-center">
+                              <TrendingUp className="text-brand-teal w-6 h-6" />
+                            </div>
+                         </div>
+                         
+                         <div className="space-y-4">
+                            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                              <div className="h-full bg-brand-teal w-3/4"></div>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-400">
+                              <span>Aprobación de Crédito</span>
+                              <span className="text-white">92% Probabilidad</span>
+                            </div>
+                         </div>
+
+                         <div className="mt-8 grid grid-cols-2 gap-4">
+                            <div className="bg-brand-dark/50 p-4 rounded-xl border border-white/5">
+                              <p className="text-gray-400 text-xs">Ahorro Anual</p>
+                              <p className="text-white font-bold text-lg">+$1.2M</p>
+                            </div>
+                            <div className="bg-brand-dark/50 p-4 rounded-xl border border-white/5">
+                               <p className="text-gray-400 text-xs">Tiempo Gestión</p>
+                               <p className="text-white font-bold text-lg">-60 Hrs</p>
+                            </div>
+                         </div>
+                      </div>
+                      {/* Decorative Elements underneath */}
+                      <div className="absolute top-10 -right-10 w-full h-full bg-brand-blue/10 border border-brand-blue/20 rounded-2xl -z-10 transform -rotate-3"></div>
+                   </FadeIn>
+                </div>
+              </div>
+            </div>
+
+            {/* Floating Ticker / Allies Section */}
+            <div className="w-full border-y border-white/5 py-8 bg-black/20 backdrop-blur-sm mt-12 md:mt-0">
+               <div className="max-w-7xl mx-auto px-6">
+                 <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-6">Aliados Financieros Estratégicos</p>
+                 <div className="flex justify-center md:justify-between items-center flex-wrap gap-8 md:gap-12">
+                    {partners.map((partner, idx) => (
+                      <div key={idx} className="group relative">
+                        <img 
+                          src={partner.url} 
+                          alt={partner.name} 
+                          className="h-8 md:h-10 w-auto object-contain opacity-50 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500 transform group-hover:scale-105"
+                        />
+                      </div>
+                    ))}
+                 </div>
+               </div>
+            </div>
+          </div>
+        );
+      };
+
+      const TheProblemVsSolution = () => {
+        return (
+          <div className="py-24 bg-brand-dark relative" id="manifiesto">
+            <div className="max-w-7xl mx-auto px-6">
+              <div className="text-center mb-16">
+                <FadeIn>
+                  <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4">El Juego ha Cambiado</h2>
+                  <p className="text-gray-400 max-w-2xl mx-auto">La banca tradicional opera por volumen. Nosotros operamos por diseño.</p>
+                </FadeIn>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Old Way */}
+                <FadeIn direction="left">
+                  <div className="h-full p-8 rounded-3xl bg-red-900/5 border border-red-500/20 hover:bg-red-900/10 transition-colors group">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20 group-hover:scale-110 transition-transform">
+                        <XCircle className="w-6 h-6 text-red-500" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-white">El Broker Tradicional</h3>
+                    </div>
+                    <ul className="space-y-4">
+                      {[
+                        "Gana comisión de apertura (vende lo que sea)",
+                        "Envía tu info a 20 bancos (quema tu buró)",
+                        "Sin estrategia fiscal ni financiera",
+                        "Relación transaccional: te olvida al firmar"
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-start gap-3 text-gray-400">
+                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </FadeIn>
+
+                {/* New Way */}
+                <FadeIn direction="right">
+                  <div className="h-full p-8 rounded-3xl bg-brand-teal/5 border border-brand-teal/30 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-brand-teal/10 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+                    
+                    <div className="flex items-center gap-4 mb-6 relative z-10">
+                      <div className="w-12 h-12 rounded-full bg-brand-teal flex items-center justify-center shadow-lg shadow-brand-teal/30 group-hover:scale-110 transition-transform">
+                        <Check className="w-6 h-6 text-brand-dark" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-white">Arquitectura Alifin</h3>
+                    </div>
+                    <ul className="space-y-4 relative z-10">
+                      {[
+                        "Gana por éxito (Success Fee)",
+                        "Protege tu buró: un tiro, un acierto",
+                        "Análisis 360° (Financiero + Legal + Reputación)",
+                        "Relación a largo plazo (Tu CFO externo)"
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-start gap-3 text-white font-medium">
+                           <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-brand-teal flex-shrink-0 shadow-[0_0_10px_#2DD4BF]"></span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </FadeIn>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const BentoServices = () => {
+        return (
+          <div className="py-24 bg-brand-navy/30" id="soluciones">
+            <div className="max-w-7xl mx-auto px-6">
+              <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+                 <div>
+                    <h2 className="text-brand-teal font-bold tracking-widest uppercase text-sm mb-2">Nuestro Stack</h2>
+                    <h3 className="text-4xl md:text-5xl font-display font-bold text-white">Soluciones Modulares</h3>
+                 </div>
+                 <p className="text-gray-400 max-w-sm text-sm md:text-right">
+                   No vendemos productos de estantería. Construimos la solución que tu momento financiero exige.
+                 </p>
+              </div>
+
+              {/* Bento Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(200px,auto)]">
+                 
+                 {/* Card 1: Large Feature */}
+                 <FadeIn className="md:col-span-2 row-span-2">
+                   <div className="h-full bg-brand-card border border-white/5 rounded-3xl p-8 relative overflow-hidden hover:border-brand-teal/30 transition-all group">
+                      <div className="absolute inset-0 bg-gradient-to-br from-brand-teal/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <div className="relative z-10 flex flex-col h-full justify-between">
+                         <div>
+                            <div className="w-12 h-12 bg-brand-dark border border-white/10 rounded-xl flex items-center justify-center mb-6">
+                               <Layers className="text-brand-teal" />
+                            </div>
+                            <h4 className="text-3xl font-bold text-white mb-4">Ingeniería de Crédito</h4>
+                            <p className="text-gray-400 text-lg max-w-md">Estructuración, presentación y negociación de deuda. Transformamos un "No" en un "Sí" mediante la reingeniería de tu expediente.</p>
+                         </div>
+                         <div className="mt-8 flex items-center gap-4 text-sm text-brand-teal font-bold uppercase tracking-wider">
+                            <span>Success Fee</span>
+                            <span className="w-1 h-1 rounded-full bg-gray-600"></span>
+                            <span>Sin riesgo</span>
+                         </div>
+                      </div>
+                      <div className="absolute bottom-0 right-0 w-1/2 h-full opacity-10">
+                         <Layers className="w-full h-full text-brand-teal transform translate-x-1/4 translate-y-1/4" />
+                      </div>
+                   </div>
+                 </FadeIn>
+
+                 {/* Card 2: Diagnosis */}
+                 <FadeIn delay={100} className="md:col-span-1 row-span-1">
+                   <div className="h-full bg-brand-card border border-white/5 rounded-3xl p-6 hover:bg-white/5 transition-colors group">
+                      <div className="flex justify-between items-start mb-4">
+                         <BarChart3 className="text-white w-8 h-8" />
+                         <ArrowRight className="text-gray-600 group-hover:text-brand-teal group-hover:-rotate-45 transition-all" />
+                      </div>
+                      <h4 className="text-xl font-bold text-white mb-2">Diagnóstico 360°</h4>
+                      <p className="text-gray-400 text-sm">Radiografía financiera, legal y reputacional en 48 horas.</p>
+                   </div>
+                 </FadeIn>
+
+                 {/* Card 3: CFO */}
+                 <FadeIn delay={200} className="md:col-span-1 row-span-1">
+                   <div className="h-full bg-brand-card border border-white/5 rounded-3xl p-6 hover:bg-white/5 transition-colors group">
+                      <div className="flex justify-between items-start mb-4">
+                         <Briefcase className="text-white w-8 h-8" />
+                         <ArrowRight className="text-gray-600 group-hover:text-brand-teal group-hover:-rotate-45 transition-all" />
+                      </div>
+                      <h4 className="text-xl font-bold text-white mb-2">CFO Externo</h4>
+                      <p className="text-gray-400 text-sm">Monitoreo y reestructuración continua de pasivos.</p>
+                   </div>
+                 </FadeIn>
+
+                 {/* Card 4: Stats */}
+                 <FadeIn delay={300} className="md:col-span-3">
+                   <div className="bg-brand-blue/10 border border-brand-blue/20 rounded-3xl p-8 flex flex-col md:flex-row justify-between items-center gap-8">
+                      <div className="text-center md:text-left">
+                         <p className="text-brand-blue font-bold uppercase tracking-widest text-xs mb-1">Capital Colocado</p>
+                         <p className="text-4xl font-display font-bold text-white">
+                           $<AnimatedNumber end={350} />M MXN
+                         </p>
+                      </div>
+                      <div className="h-8 w-px bg-white/10 hidden md:block"></div>
+                      <div className="text-center md:text-left">
+                         <p className="text-brand-blue font-bold uppercase tracking-widest text-xs mb-1">Tasa de Éxito</p>
+                         <p className="text-4xl font-display font-bold text-white">
+                           <AnimatedNumber end={94} suffix="%" />
+                         </p>
+                      </div>
+                      <div className="h-8 w-px bg-white/10 hidden md:block"></div>
+                      <div className="text-center md:text-left">
+                         <p className="text-brand-blue font-bold uppercase tracking-widest text-xs mb-1">Ahorro Promedio</p>
+                         <p className="text-4xl font-display font-bold text-white">
+                           <AnimatedNumber end={18} suffix="%" />
+                         </p>
+                      </div>
+                   </div>
+                 </FadeIn>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const ProcessTimeline = () => {
+        const steps = [
+          { 
+            title: "Diagnóstico Profundo", 
+            desc: "Analizamos la salud financiera, legal y fiscal de tu empresa. Identificamos riesgos ocultos y oportunidades de capitalización inmediata.", 
+            time: "Día 1-3",
+            icon: <FileSearch className="w-6 h-6" />
+          },
+          { 
+            title: "Ingeniería Financiera", 
+            desc: "Diseñamos la estructura de deuda óptima. Reorganizamos balances, corregimos ratios y preparamos el expediente perfecto.", 
+            time: "Día 4-7",
+            icon: <PenTool className="w-6 h-6" />
+          },
+          { 
+            title: "Licitación Competitiva", 
+            desc: "No pedimos favor a un banco. Hacemos que 10+ instituciones compitan por tu crédito. Tú eliges las mejores condiciones.", 
+            time: "Día 8-15",
+            icon: <Building2 className="w-6 h-6" />
+          },
+          { 
+            title: "Cierre & Dispersión", 
+            desc: "Gestión legal, firma de contratos y dispersión de recursos. Nuestro trabajo termina cuando el dinero está en tu cuenta.", 
+            time: "Día 20+",
+            icon: <Wallet className="w-6 h-6" />
+          },
+        ];
+
+        return (
+          <div className="py-24 bg-brand-dark overflow-hidden relative" id="proceso">
+             {/* Ambient glow */}
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-teal/5 rounded-full blur-[120px] pointer-events-none"></div>
+
+            <div className="max-w-5xl mx-auto px-6 relative z-10">
+              <div className="text-center mb-20">
+                  <h2 className="text-brand-teal font-bold tracking-widest uppercase text-sm mb-2">Metodología Alifin</h2>
+                  <h3 className="text-3xl md:text-5xl font-display font-bold text-white">Ruta Crítica hacia el Capital</h3>
+              </div>
+              
+              <div className="relative">
+                {/* Central Vertical Line */}
+                <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-brand-teal/0 via-brand-teal/50 to-brand-teal/0 md:-translate-x-1/2"></div>
+
+                <div className="space-y-12">
+                  {steps.map((step, idx) => (
+                    <div key={idx} className={`relative flex items-center md:justify-between ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+                      
+                      {/* Desktop Empty Space for ZigZag */}
+                      <div className="hidden md:block w-5/12"></div>
+
+                      {/* Central Node */}
+                      <div className="absolute left-8 md:left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-brand-dark border-4 border-brand-teal z-20 shadow-[0_0_20px_rgba(45,212,191,0.5)] flex items-center justify-center">
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                      </div>
+
+                      {/* Card Content */}
+                      <FadeIn direction={idx % 2 === 0 ? 'right' : 'left'} className="w-full md:w-5/12 pl-20 md:pl-0">
+                         <div className="group relative bg-brand-card/30 backdrop-blur-md border border-white/5 rounded-2xl p-8 hover:bg-brand-card/50 hover:border-brand-teal/50 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+                            {/* Large Watermark Number */}
+                            <span className="absolute -top-6 -right-4 text-9xl font-bold text-white/5 group-hover:text-brand-teal/10 transition-colors pointer-events-none select-none">
+                              0{idx + 1}
+                            </span>
+                            
+                            <div className="relative z-10">
+                              <div className="w-12 h-12 rounded-lg bg-brand-teal/10 flex items-center justify-center text-brand-teal mb-4 group-hover:scale-110 transition-transform duration-300">
+                                 {step.icon}
+                              </div>
+                              <h4 className="text-2xl font-bold text-white mb-3 group-hover:text-brand-teal transition-colors">{step.title}</h4>
+                              <p className="text-gray-400 text-sm leading-relaxed mb-4">{step.desc}</p>
+                              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-teal/10 border border-brand-teal/20 text-brand-teal text-xs font-bold font-mono">
+                                 <Clock className="w-3 h-3" />
+                                 {step.time}
+                              </div>
+                            </div>
+                         </div>
+                      </FadeIn>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const ContactDashboard = () => {
+        const [formData, setFormData] = useState({
+          name: '',
+          company: '',
+          email: '',
+          phone: '',
+          revenue: '',
+          need: 'Capital de Trabajo',
+          message: ''
+        });
+
+        const handleChange = (e) => {
+          setFormData({ ...formData, [e.target.name]: e.target.value });
+        };
+
+        const setRevenue = (value) => {
+          setFormData({ ...formData, revenue: value });
+        };
+
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          const { name, company, email, phone, revenue, need, message } = formData;
+          
+          const subject = `Solicitud de Diagnóstico - ${company}`;
+          const body = `Hola equipo Alifin.Tech,
+
+      Me interesa iniciar un proceso de arquitectura financiera. Aquí están los datos de mi empresa:
+
+      ------------------------------------------------
+      DATOS DE CONTACTO
+      ------------------------------------------------
+      Nombre: ${name}
+      Empresa: ${company}
+      Correo: ${email}
+      Teléfono: ${phone}
+
+      ------------------------------------------------
+      PERFIL FINANCIERO
+      ------------------------------------------------
+      Facturación Anual Estimada: ${revenue}
+      Necesidad Principal: ${need}
+
+      ------------------------------------------------
+      MENSAJE ADICIONAL
+      ------------------------------------------------
+      ${message}
+
+      Quedo atento a su respuesta para agendar la sesión de diagnóstico.
+      `;
+
+          window.location.href = `mailto:alifin.tech@grupoalifin.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        };
+
+        return (
+          <div className="py-24 bg-brand-navy/20" id="contacto">
+            <div className="max-w-6xl mx-auto px-6">
+              <div className="bg-brand-card border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
+                 {/* Left: Content */}
+                 <div className="p-10 md:w-2/5 bg-gradient-to-br from-brand-teal to-brand-tealDark text-white flex flex-col justify-between relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-multiply"></div>
+                    <div className="relative z-10">
+                      <h3 className="text-3xl font-display font-bold mb-4">¿Calificas?</h3>
+                      <p className="text-white/90 mb-8">
+                         Nuestro algoritmo de precalificación requiere información básica. Te diremos si podemos ayudarte en menos de 24 horas.
+                      </p>
+                      <div className="space-y-4 text-sm font-medium">
+                         <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><Check className="w-4 h-4" /></div>
+                            Confidencialidad Garantizada
+                         </div>
+                         <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><Clock className="w-4 h-4" /></div>
+                            Respuesta Rápida 24h
+                         </div>
+                         <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><Shield className="w-4 h-4" /></div>
+                            Protección de Datos
+                         </div>
+                      </div>
+                    </div>
+                    <div className="relative z-10 mt-12">
+                       <p className="text-xs opacity-70">alifin.tech@grupoalifin.com</p>
+                    </div>
+                 </div>
+
+                 {/* Right: Form */}
+                 <div className="p-8 md:p-10 md:w-3/5 bg-brand-dark">
+                    <form className="space-y-5" onSubmit={handleSubmit}>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                             <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">Nombre Completo</label>
+                             <input 
+                               name="name"
+                               value={formData.name}
+                               onChange={handleChange}
+                               required
+                               type="text" 
+                               className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-brand-teal focus:outline-none focus:ring-1 focus:ring-brand-teal transition-all placeholder:text-gray-700" 
+                               placeholder="Ej. Juan Pérez"
+                             />
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">Empresa</label>
+                             <input 
+                               name="company"
+                               value={formData.company}
+                               onChange={handleChange}
+                               required
+                               type="text" 
+                               className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-brand-teal focus:outline-none focus:ring-1 focus:ring-brand-teal transition-all placeholder:text-gray-700" 
+                               placeholder="Ej. Industrias SA de CV"
+                             />
+                          </div>
+                       </div>
+
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                             <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">Correo Corporativo</label>
+                             <input 
+                               name="email"
+                               value={formData.email}
+                               onChange={handleChange}
+                               required
+                               type="email" 
+                               className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-brand-teal focus:outline-none focus:ring-1 focus:ring-brand-teal transition-all placeholder:text-gray-700" 
+                               placeholder="juan@empresa.com"
+                             />
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">Teléfono / WhatsApp</label>
+                             <input 
+                               name="phone"
+                               value={formData.phone}
+                               onChange={handleChange}
+                               required
+                               type="tel" 
+                               className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-brand-teal focus:outline-none focus:ring-1 focus:ring-brand-teal transition-all placeholder:text-gray-700" 
+                               placeholder="55 1234 5678"
+                             />
+                          </div>
+                       </div>
+
+                       <div className="space-y-2">
+                          <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">Facturación Anual (MXN)</label>
+                          <div className="grid grid-cols-3 gap-3">
+                             {['$10M - $50M', '$50M - $200M', '+$200M'].map((opt) => (
+                                <button 
+                                  key={opt} 
+                                  type="button"
+                                  onClick={() => setRevenue(opt)}
+                                  className={`border rounded-lg p-3 text-xs font-medium transition-all ${
+                                      formData.revenue === opt 
+                                      ? 'bg-brand-teal text-brand-dark border-brand-teal' 
+                                      : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white'
+                                  }`}
+                                >
+                                   {opt}
+                                </button>
+                             ))}
+                          </div>
+                          <input type="hidden" name="revenue" required value={formData.revenue} />
+                          {!formData.revenue && <p className="text-[10px] text-red-400 opacity-0 group-invalid:opacity-100">* Selecciona un rango</p>}
+                       </div>
+
+                       <div className="space-y-2">
+                          <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">Necesidad Principal</label>
+                          <div className="relative">
+                              <select 
+                                  name="need"
+                                  value={formData.need}
+                                  onChange={handleChange}
+                                  className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-brand-teal focus:outline-none focus:ring-1 focus:ring-brand-teal transition-all appearance-none"
+                              >
+                                  <option value="Capital de Trabajo">Capital de Trabajo (Liquidez)</option>
+                                  <option value="Refinanciamiento de Deuda">Refinanciamiento de Pasivos</option>
+                                  <option value="Adquisición de Activos">Adquisición de Activos / Maquinaria</option>
+                                  <option value="Expansión">Proyecto de Expansión</option>
+                                  <option value="Otro">Otro</option>
+                              </select>
+                              <ChevronDown className="absolute right-3 top-3.5 w-4 h-4 text-gray-500 pointer-events-none" />
+                          </div>
+                       </div>
+
+                       <div className="space-y-2">
+                          <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">Mensaje Opcional</label>
+                          <textarea 
+                              name="message"
+                              value={formData.message}
+                              onChange={handleChange}
+                              rows={2}
+                              className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-brand-teal focus:outline-none focus:ring-1 focus:ring-brand-teal transition-all placeholder:text-gray-700 resize-none"
+                              placeholder="¿Algo más que debamos saber?"
+                          ></textarea>
+                       </div>
+
+                       <button 
+                          type="submit" 
+                          disabled={!formData.revenue || !formData.name || !formData.email}
+                          className="w-full bg-white text-brand-dark font-bold py-4 rounded-lg hover:bg-brand-teal hover:text-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-white/5 hover:shadow-brand-teal/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                       >
+                          Enviar Solicitud
+                       </button>
+                       <p className="text-[10px] text-center text-gray-600 mt-2">
+                          Al hacer clic en enviar, se abrirá tu cliente de correo predeterminado con la información lista.
+                       </p>
+                    </form>
+                 </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const Footer = () => {
+        return (
+          <footer className="bg-brand-dark border-t border-white/5 py-12 text-sm text-gray-500">
+            <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+              <p>© {new Date().getFullYear()} Grupo Alifin. Todos los derechos reservados.</p>
+              <div className="flex gap-6">
+                <a href="#" className="hover:text-white transition-colors">Privacidad</a>
+                <a href="#" className="hover:text-white transition-colors">Términos</a>
+              </div>
+            </div>
+          </footer>
+        );
+      };
+
+      const App = () => {
+        return (
+          <div className="font-sans antialiased selection:bg-brand-teal selection:text-brand-dark bg-brand-dark overflow-x-hidden text-white">
+            <Navbar />
+            <Hero />
+            <TheProblemVsSolution />
+            <BentoServices />
+            <ProcessTimeline />
+            <ContactDashboard />
+            <Footer />
+          </div>
+        );
+      };
+
+      // --- Rendering Logic ---
+      const rootElement = document.getElementById('root');
+      if (!rootElement) {
+        throw new Error("Could not find root element to mount to");
+      }
+
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+    </script>
+  </body>
+</html>
